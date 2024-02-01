@@ -16,8 +16,9 @@
 #include <iostream>
 #include <list>
 
-cv::Mat grayscale(cv::Mat* frame);
-
-void sobel(cv::Mat* frame);
+// void *grayscale(cv::Mat* input, cv::Mat* output);
+// void *sobel(cv::Mat* input, cv::Mat* output);
+void *grayscale(void* pkg);
+void *sobel(void* pkg);
 
 #endif

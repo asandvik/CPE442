@@ -1,17 +1,16 @@
 CC = g++
-CFLAGS = -O0 
+CFLAGS = -O0 -g
 LDFLAGS = `pkg-config --cflags --libs opencv4` 
 SRC = imgp.cpp imgp.hpp
 OUT = imgp
 
-
-all: imgp tut2
+all: imgp thread
 
 imgp: $(SRC)
-	$(CC) $(CFLAGS) $(SRC) -o $(OUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(SRC) -o $@ $(LDFLAGS)
 
-tut2: tut2.cpp
-	$(CC) $(CFLAGS) tut2.cpp -o $@ $(LDFLAGS)
+thread: thread.cpp
+	$(CC) $(CFLAGS) thread.cpp -o $@ $(LDFLAGS)
 
 clean:
 	rm $(OUT) 

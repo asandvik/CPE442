@@ -13,6 +13,21 @@ using namespace cv;
 typedef Point3_<uint8_t> Pixel;
 typedef Point_<int32_t> ImPoint;
 
+typedef struct Gray_Pkg {
+	Mat *raw_frame; // make global?
+	Mat *gray_frame;
+	uint8_t start;
+	uint8_t span;
+
+} Gray_Pkg;
+
+typedef struct Edge_Pkg {
+	Mat *gray_frame;
+	Mat *edge_frame;
+	uint8_t start;
+	uint8_t span;
+} Edge_Pkg;
+
 const int32_t Gx[] = {
 	-1,  0,  1,
 	-2,  0,  2,
@@ -25,28 +40,72 @@ const int32_t Gy[] = {
 	 1,  2,  1
 };
 
-int main(){
-        
+int main() {
+
+	pthread_t thread1, thread2, thread3, thread4;
+	int iret1, iret2, iret3, iret4;
+
 	namedWindow("CPU", WINDOW_NORMAL);
-	Mat frame;
 	VideoCapture reader("A.mp4");
 	resizeWindow("CPU", 1600, 900);
-	
-	int num = 0;
-	
-	for(;;){
-		if(!reader.read(frame)) break;
 
-		frame = grayscale(&frame);
+	double num_cols = reader.get(CAP_PROP_FRAME_WIDTH);
+	double num_rows = reader.get(CAP_PROP_FRAME_HEIGHT);
 
-		sobel(&frame);
+	Mat raw_frame(num_rows, num_cols, CV_8UC3);
+	Mat gray_frame(num_rows, num_cols, CV_8UC1);
+	Mat edge_frame(num_rows, num_cols, CV_8UC1);
 
-		imshow("CPU", frame);
+	Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, 4};
+	Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, 1, 4};
+	Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2, 4};
+	Gray_Pkg gpkg4 = {&raw_frame, &gray_frame, 3, 4};
+
+	Edge_Pkg epkg1 = {&gray_frame, &edge_frame, 0, 4};
+	Edge_Pkg epkg2 = {&gray_frame, &edge_frame, 1, 4};
+	Edge_Pkg epkg3 = {&gray_frame, &edge_frame, 2, 4};
+	Edge_Pkg epkg4 = {&gray_frame, &edge_frame, 3, 4};
+
+	for(;;) {
+
+		if(!reader.read(raw_frame)) break; // not &raw_frame?
+
+		iret1 = pthread_create(&thread1, NULL, grayscale, &gpkg1);
+		iret2 = pthread_create(&thread2, NULL, grayscale, &gpkg2);
+		iret3 = pthread_create(&thread3, NULL, grayscale, &gpkg3);
+		iret4 = pthread_create(&thread4, NULL, grayscale, &gpkg4);
+
+		pthread_join(thread1, NULL);
+     	pthread_join(thread2, NULL);
+		pthread_join(thread3, NULL);
+     	pthread_join(thread4, NULL); 
+
+		// printf("Thread 1 returns from grayscale: %d\n",iret1);
+     	// printf("Thread 2 returns from grayscale: %d\n",iret2);
+		// printf("Thread 3 returns from grayscale: %d\n",iret3);
+     	// printf("Thread 4 returns from grayscale: %d\n",iret4);
+
+		iret1 = pthread_create(&thread1, NULL, sobel, &epkg1);
+		iret2 = pthread_create(&thread2, NULL, sobel, &epkg2);
+		iret3 = pthread_create(&thread3, NULL, sobel, &epkg3);
+		iret4 = pthread_create(&thread4, NULL, sobel, &epkg4);
+
+		pthread_join(thread1, NULL);
+     	pthread_join(thread2, NULL);
+		pthread_join(thread3, NULL);
+     	pthread_join(thread4, NULL); 
+
+		// printf("Thread 1 returns from sobel: %d\n",iret1);
+     	// printf("Thread 2 returns from sobel: %d\n",iret2);
+		// printf("Thread 3 returns from sobel: %d\n",iret3);
+     	// printf("Thread 4 returns from sobel: %d\n",iret4);
+
+		// grayscale(&raw_frame, &gray_frame);
+		// sobel(&gray_frame, &edge_frame);
+
+		imshow("CPU", edge_frame);
 		waitKey(1); // need delay for frame to show? 30 frames/sec -> delay 33 msec
-		// printf("%d\n", ++num);
 	}
-
-
 }
 
 /*-----------------------------------------------------
@@ -55,65 +114,76 @@ int main(){
 * Description: converts three-channel color matrix to 
 * 	       one-channel grayscale following CCIR 601 
 *
-* param frame: cv::Mat: video frame to be processed
+* param input: cv::Mat: address of color frame (3 channels)
+* param output: cv::Mat: address of gray frame (1 channel)
 *
-* return: cv::Mat: output one-channel video frame in grayscale
+* return: none
 *--------------------------------------------------------*/
-Mat grayscale(Mat* frame){
-	Mat ret(frame->rows, frame->cols, CV_8UC1);
-	for(int row=0;row<frame->rows; row++){
-        	for(int col=0;col<frame->cols;col++){
-			Pixel* ptr = frame->ptr<Pixel>(row, col);
-			uint8_t num = 0.299*ptr->x + 0.587*ptr->y + 0.114*ptr->z;
-			uint8_t* opt = ret.ptr<uint8_t>(row, col);
-			*opt = num;
-		}
+void *grayscale(void *pkg){
+	Gray_Pkg *info = (Gray_Pkg*)pkg;
+
+	Mat *raw_frame = info->raw_frame;
+	Mat *gray_frame = info->gray_frame;
+
+	uint32_t num_pix = raw_frame->rows * raw_frame->cols;
+	
+	for (int i = info->start; i < num_pix-1; i += info->span) {
+		int row = i / raw_frame->cols;
+		int col = i % raw_frame->cols;
+	
+		Pixel* ptr = raw_frame->ptr<Pixel>(row, col);
+		uint8_t num = 0.299*ptr->x + 0.587*ptr->y + 0.114*ptr->z;
+		uint8_t* opt = gray_frame->ptr<uint8_t>(row, col);
+		*opt = num;
 	}
-	return ret;
+	return NULL;
 }
 
 /*-----------------------------------------------------
 * Function: sobel
 *
-* Description: filters 3-channel grayscale matrix to perform edge detection 
-*	       (Note: matrix channel count unchanged)
+* Description: filters grayscale matrix to perform edge detection 
 *
-* param frame: cv::Mat: video frame to be processed
+* param input: cv::Mat: pointer to grayscale frame to be processed
+* param output: cv::Mat: pointer to edge frame to store output
 *
 * return: NULL
 *--------------------------------------------------------*/
-void sobel(Mat* frame){
-	Mat framecopy = frame->clone();
-	for(int row=0;row<frame->rows; row++){
-		for(int col=0;col<frame->cols;col++){
-			ImPoint cpoints[] = {
-						
-				ImPoint(row-1, col-1),	ImPoint(row-1, col),	ImPoint(row-1, col+1),
-				ImPoint(row, col-1),	ImPoint(row, col),	ImPoint(row, col+1),
-				ImPoint(row+1, col-1),  ImPoint(row+1, col),	ImPoint(row+1, col+1)
+void *sobel(void *pkg){
 
-			};
+	Edge_Pkg *info = (Edge_Pkg*)pkg;
 
-			int32_t gx = 0;
-			int32_t gy = 0;
-			for(int i=0;i<9;i++){
-				int32_t addx = 0;
-				int32_t addy = 0;
-				ImPoint cpt = cpoints[i];
-				if(cpt.x >= 0 && cpt.x < frame->rows && cpt.y >= 0 && cpt.y < frame->cols){
-					uint8_t* cpix = framecopy.ptr<uint8_t>(cpt.x, cpt.y);
-					addx = *cpix * Gx[i];
-					addy = *cpix * Gy[i];
-				}
-				gx += addx;
-				gy += addy;	
-			}
-			
-			int32_t gf =  abs(gx) + abs(gy);
-			if(gf > 255) gf = 255;
+	Mat *gray_frame = info->gray_frame;
+	Mat *edge_frame = info->edge_frame;
 
-			uint8_t* newpix = frame->ptr<uint8_t>(row, col);
-			*newpix = gf;
+	uint32_t num_pix = gray_frame->rows * gray_frame->cols;
+	
+	for (int i = info->start; i < num_pix-1; i += info->span) {
+		int row = i / gray_frame->cols;
+		int col = i % gray_frame->cols;
+
+		uint8_t neighborhood[] = {
+		
+			gray_frame->at<uint8_t>(row-1, col-1),	gray_frame->at<uint8_t>(row-1, col),	gray_frame->at<uint8_t>(row-1, col+1),
+			gray_frame->at<uint8_t>(row, col-1),	gray_frame->at<uint8_t>(row, col),		gray_frame->at<uint8_t>(row, col+1),
+			gray_frame->at<uint8_t>(row+1, col-1),  gray_frame->at<uint8_t>(row+1, col),	gray_frame->at<uint8_t>(row+1, col+1)
+
+		};
+
+		int32_t gx = 0;
+		int32_t gy = 0;
+
+		for(int i=0;i<9;i++){
+			gx += neighborhood[i] * Gx[i];
+			gy += neighborhood[i] * Gy[i];
 		}
+		
+		int32_t gf =  abs(gx) + abs(gy);
+		if(gf > 255) gf = 255;
+
+		uint8_t* newpix = edge_frame->ptr<uint8_t>(row, col);
+		*newpix = gf;
+		
 	}
+	return NULL;
 }
