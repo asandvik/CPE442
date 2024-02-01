@@ -45,9 +45,9 @@ int main() {
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
 
-	namedWindow("CPU", WINDOW_NORMAL);
+	namedWindow("CPU", WINDOW_AUTOSIZE);
+	setWindowProperty("CPU", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
 	VideoCapture reader("A.mp4");
-	resizeWindow("CPU", 1600, 900);
 
 	double num_cols = reader.get(CAP_PROP_FRAME_WIDTH);
 	double num_rows = reader.get(CAP_PROP_FRAME_HEIGHT);
@@ -68,7 +68,7 @@ int main() {
 
 	for(;;) {
 
-		if(!reader.read(raw_frame)) break; // not &raw_frame?
+		if(!reader.read(raw_frame)) break;
 
 		iret1 = pthread_create(&thread1, NULL, grayscale, &gpkg1);
 		iret2 = pthread_create(&thread2, NULL, grayscale, &gpkg2);
@@ -80,11 +80,6 @@ int main() {
 		pthread_join(thread3, NULL);
      	pthread_join(thread4, NULL); 
 
-		// printf("Thread 1 returns from grayscale: %d\n",iret1);
-     	// printf("Thread 2 returns from grayscale: %d\n",iret2);
-		// printf("Thread 3 returns from grayscale: %d\n",iret3);
-     	// printf("Thread 4 returns from grayscale: %d\n",iret4);
-
 		iret1 = pthread_create(&thread1, NULL, sobel, &epkg1);
 		iret2 = pthread_create(&thread2, NULL, sobel, &epkg2);
 		iret3 = pthread_create(&thread3, NULL, sobel, &epkg3);
@@ -94,14 +89,6 @@ int main() {
      	pthread_join(thread2, NULL);
 		pthread_join(thread3, NULL);
      	pthread_join(thread4, NULL); 
-
-		// printf("Thread 1 returns from sobel: %d\n",iret1);
-     	// printf("Thread 2 returns from sobel: %d\n",iret2);
-		// printf("Thread 3 returns from sobel: %d\n",iret3);
-     	// printf("Thread 4 returns from sobel: %d\n",iret4);
-
-		// grayscale(&raw_frame, &gray_frame);
-		// sobel(&gray_frame, &edge_frame);
 
 		imshow("CPU", edge_frame);
 		waitKey(1); // need delay for frame to show? 30 frames/sec -> delay 33 msec

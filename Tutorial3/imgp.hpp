@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <list>
+#include <pthread.h>
 
 // void *grayscale(cv::Mat* input, cv::Mat* output);
 // void *sobel(cv::Mat* input, cv::Mat* output);
