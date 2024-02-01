@@ -1,7 +1,8 @@
 /*********************************************************
 * File: imgp.cpp
 *
-* Description: brief description of file purpose
+* Description: This program filters a video with the Sobel
+				filter.
 *
 * Author: Michael Noon and Addison Sandvik
 *
@@ -13,27 +14,31 @@ using namespace cv;
 typedef Point3_<uint8_t> Pixel;
 typedef Point_<int32_t> ImPoint;
 
+/* information package for grayscale() */
 typedef struct Gray_Pkg {
-	Mat *raw_frame; // make global?
-	Mat *gray_frame;
-	uint8_t start;
-	uint8_t span;
+	Mat *raw_frame; // input
+	Mat *gray_frame; // output
+	uint8_t start; // starting index
+	uint8_t span; // increment to indices
 
 } Gray_Pkg;
 
+/* information package for sobel() */
 typedef struct Edge_Pkg {
-	Mat *gray_frame;
-	Mat *edge_frame;
-	uint8_t start;
-	uint8_t span;
+	Mat *gray_frame; // input
+	Mat *edge_frame; // output
+	uint8_t start; // starting index
+	uint8_t span; // increment to indices
 } Edge_Pkg;
 
+/* vertical edge Sobel filter */
 const int32_t Gx[] = {
 	-1,  0,  1,
 	-2,  0,  2,
 	-1,  0,  1
 };
 
+/* horizontal edge Sobel filter*/
 const int32_t Gy[] = {
 	-1, -2, -1,
 	 0,  0,  0,
@@ -45,17 +50,21 @@ int main() {
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
 
+	// create display window
 	namedWindow("CPU", WINDOW_AUTOSIZE);
 	setWindowProperty("CPU", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
-	VideoCapture reader("A.mp4");
 
+	// video frame reader
+	VideoCapture reader("A.mp4");
 	double num_cols = reader.get(CAP_PROP_FRAME_WIDTH);
 	double num_rows = reader.get(CAP_PROP_FRAME_HEIGHT);
 
+	// buffers for processing
 	Mat raw_frame(num_rows, num_cols, CV_8UC3);
 	Mat gray_frame(num_rows, num_cols, CV_8UC1);
 	Mat edge_frame(num_rows, num_cols, CV_8UC1);
 
+	// information for threads
 	Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, 4};
 	Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, 1, 4};
 	Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2, 4};
@@ -68,30 +77,36 @@ int main() {
 
 	for(;;) {
 
+		// read frame
 		if(!reader.read(raw_frame)) break;
 
+		// launch grayscale threads
 		iret1 = pthread_create(&thread1, NULL, grayscale, &gpkg1);
 		iret2 = pthread_create(&thread2, NULL, grayscale, &gpkg2);
 		iret3 = pthread_create(&thread3, NULL, grayscale, &gpkg3);
 		iret4 = pthread_create(&thread4, NULL, grayscale, &gpkg4);
 
+		// synchronize
 		pthread_join(thread1, NULL);
      	pthread_join(thread2, NULL);
 		pthread_join(thread3, NULL);
      	pthread_join(thread4, NULL); 
 
+		// launch sobel threads
 		iret1 = pthread_create(&thread1, NULL, sobel, &epkg1);
 		iret2 = pthread_create(&thread2, NULL, sobel, &epkg2);
 		iret3 = pthread_create(&thread3, NULL, sobel, &epkg3);
 		iret4 = pthread_create(&thread4, NULL, sobel, &epkg4);
 
+		// synchronize
 		pthread_join(thread1, NULL);
      	pthread_join(thread2, NULL);
 		pthread_join(thread3, NULL);
      	pthread_join(thread4, NULL); 
 
+		// display
 		imshow("CPU", edge_frame);
-		waitKey(1); // need delay for frame to show? 30 frames/sec -> delay 33 msec
+		waitKey(1);
 	}
 }
 
@@ -101,10 +116,13 @@ int main() {
 * Description: converts three-channel color matrix to 
 * 	       one-channel grayscale following CCIR 601 
 *
-* param input: cv::Mat: address of color frame (3 channels)
-* param output: cv::Mat: address of gray frame (1 channel)
+* param pkg: void*: Pointer to Gray_Pkg that contains:
+* 		raw_frame: Mat*: address of color frame (input, 3 channels)
+* 		gray_frame: Mat*: address of gray frame (output, 1 channel)
+*		start: uint8_t: starting linear index
+*		span: uint8_t: change to subsequent indices
 *
-* return: none
+* return: NULL
 *--------------------------------------------------------*/
 void *grayscale(void *pkg){
 	Gray_Pkg *info = (Gray_Pkg*)pkg;
@@ -131,8 +149,11 @@ void *grayscale(void *pkg){
 *
 * Description: filters grayscale matrix to perform edge detection 
 *
-* param input: cv::Mat: pointer to grayscale frame to be processed
-* param output: cv::Mat: pointer to edge frame to store output
+* param pkg: void*: Pointer to Edge_Pkg that contains:
+* 		gray_frame: Mat*: address of gray frame (input)
+*		edge_frame: Mat*: address of edge frame (output)
+*		start: uint8_t: starting linear index
+*		span: uint8_t: change to subsequent indices
 *
 * return: NULL
 *--------------------------------------------------------*/
