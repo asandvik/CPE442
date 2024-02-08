@@ -137,7 +137,7 @@ void *grayscale(void *pkg){
 		int col = i % raw_frame->cols;
 	
 		Pixel* ptr = raw_frame->ptr<Pixel>(row, col);
-		uint8_t num = 0.299*ptr->x + 0.587*ptr->y + 0.114*ptr->z;
+		uint8_t num = (4*ptr->x + 10*ptr->y + 2*ptr->z) >> 4;
 		uint8_t* opt = gray_frame->ptr<uint8_t>(row, col);
 		*opt = num;
 	}
