@@ -32,21 +32,20 @@ typedef struct Edge_Pkg {
 } Edge_Pkg;
 
 /* vertical edge Sobel filter */
-const int32_t Gx[] = {
+const int16x8_t Gx = {
 	-1,  0,  1,
-	-2,  0,  2,
+	-2,  2,
 	-1,  0,  1
 };
 
 /* horizontal edge Sobel filter*/
-const int32_t Gy[] = {
+const int16x8_t Gy = {
 	-1, -2, -1,
-	 0,  0,  0,
+	 0,  0,
 	 1,  2,  1
 };
 
 int main() {
-
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
 
@@ -55,7 +54,7 @@ int main() {
 	setWindowProperty("CPU", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
 
 	// video frame reader
-	VideoCapture reader("A.mp4");
+	VideoCapture reader("../Videos/A.mp4");
 	double num_cols = reader.get(CAP_PROP_FRAME_WIDTH);
 	double num_rows = reader.get(CAP_PROP_FRAME_HEIGHT);
 
@@ -166,32 +165,38 @@ void *sobel(void *pkg){
 
 	uint32_t num_pix = gray_frame->rows * gray_frame->cols;
 	
+
+
 	for (int i = info->start; i < num_pix-1; i += info->span) {
 		int row = i / gray_frame->cols;
 		int col = i % gray_frame->cols;
 
-		uint8_t neighborhood[] = {
+
+		uint8x8_t oner = vld1_u8(gray_frame->ptr<uint8_t>(row-1, col-1));
+		uint8x8_t twor = vld1_u8(gray_frame->ptr<uint8_t>(row, col-1));
+		uint8x8_t threer = vld1_u8(gray_frame->ptr<uint8_t>(row+1, col-1));
+		int16x8_t neighborhood = {
 		
-			gray_frame->at<uint8_t>(row-1, col-1),	gray_frame->at<uint8_t>(row-1, col),	gray_frame->at<uint8_t>(row-1, col+1),
-			gray_frame->at<uint8_t>(row, col-1),	gray_frame->at<uint8_t>(row, col),		gray_frame->at<uint8_t>(row, col+1),
-			gray_frame->at<uint8_t>(row+1, col-1),  gray_frame->at<uint8_t>(row+1, col),	gray_frame->at<uint8_t>(row+1, col+1)
+			(int16_t)oner[0],	(int16_t)oner[1],	(int16_t)oner[2],
+			(int16_t)twor[0],		(int16_t)twor[2],
+			(int16_t)threer[0],  (int16_t)threer[1],	(int16_t)threer[2]
 
 		};
 
-		int32_t gx = 0;
-		int32_t gy = 0;
+		int16x8_t gxv = vmulq_s16(neighborhood, Gx);
+		int16x8_t gyv = vmulq_s16(neighborhood, Gy);
 
-		for(int i=0;i<9;i++){
-			gx += neighborhood[i] * Gx[i];
-			gy += neighborhood[i] * Gy[i];
-		}
+		int16_t gx = vaddvq_s16(gxv);
+		int16_t gy = vaddvq_s16(gyv);
 		
-		int32_t gf =  abs(gx) + abs(gy);
+		int16_t gf =  abs(gx) + abs(gy);
 		if(gf > 255) gf = 255;
 
 		uint8_t* newpix = edge_frame->ptr<uint8_t>(row, col);
-		*newpix = gf;
+		*newpix = (uint8_t)gf;
 		
 	}
 	return NULL;
 }
+
+

@@ -13,6 +13,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 
+#include <arm_neon.h>
+
 #include <iostream>
 #include <list>
 #include <pthread.h>
