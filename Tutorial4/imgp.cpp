@@ -34,14 +34,14 @@ typedef struct Edge_Pkg {
 /* vertical edge Sobel filter */
 const int16x8_t Gx = {
 	-1,  0,  1,
-	-2,  2,
+	-2,      2,
 	-1,  0,  1
 };
 
 /* horizontal edge Sobel filter*/
 const int16x8_t Gy = {
 	-1, -2, -1,
-	 0,  0,
+	 0,      0,
 	 1,  2,  1
 };
 
@@ -132,36 +132,37 @@ void *grayscale(void *pkg){
 	Mat *gray_frame = info->gray_frame;
 	uint32_t num_pix = raw_frame->rows * raw_frame->cols;
 
-	// uint8x16x3_t rgb_vec;
-	// uint8_t *in_vec_start = raw_frame->data;
+	uint8_t *input_start = raw_frame->data;
+	uint8_t *output_start = gray_frame->data;
 
-	// uint8_t *vr;
-	// uint8_t *vg;
-	// uint8_t *vb;
+	for (int i = info->start * 8; i < num_pix-1; i += info->span * 8) {
+		// load with deinterleave
+		uint8x8x3_t rgb_vec = vld3_u8(input_start+i*3);
 
-	// for (i = 0; i < 14400; i++) {
-	// 	rgb_vec = vld3q_u8(in_vec_start);
+		// widen into 16 bit fields
+		uint16x8_t vr = vmovl_u8(rgb_vec.val[0]);
+		uint16x8_t vg = vmovl_u8(rgb_vec.val[1]);
+		uint16x8_t vb = vmovl_u8(rgb_vec.val[2]);
 
-	// 	vstlq_u8(vr, rgb_vec.val[0]);
-	// 	vstlq_u8(vg, rgb_vec.val[1]);
-	// 	vstlq_u8(vb, rgb_vec.val[2]);
+		// multiply
+		vr = vmulq_n_u16(vr, 4);
+		vg = vmulq_n_u16(vg, 10);
+		vb = vmulq_n_u16(vb, 2);
 
-		
+		// add channels together
+		uint16x8_t vgray16 = vaddq_u16(vr, vg);
+		vgray16 = vaddq_u16(vgray16, vb);
 
-	// 	/// working here
+		// divide by 16
+		vgray16 = vshrq_n_u16(vgray16, 4);
 
-	// 	in_vec_start += 48; // 3 * 16
-	// }
+		// make 8 bit
+		uint8x8_t vgray8 = vmovn_u16(vgray16);
 
-	for (int i = info->start; i < num_pix-1; i += info->span) {
-		int row = i / raw_frame->cols;
-		int col = i % raw_frame->cols;
-	
-		Pixel* ptr = raw_frame->ptr<Pixel>(row, col);
-		uint8_t num = (4*ptr->x + 10*ptr->y + 2*ptr->z) >> 4;
-		uint8_t* opt = gray_frame->ptr<uint8_t>(row, col);
-		*opt = num;
+		// write to output
+		vst1_u8(output_start+i, vgray8);
 	}
+
 	return NULL;
 }
 
