@@ -18,8 +18,8 @@ typedef Point_<int32_t> ImPoint;
 typedef struct Gray_Pkg {
 	Mat *raw_frame; // input
 	Mat *gray_frame; // output
-	uint8_t start; // starting index
-	uint8_t span; // increment to indices
+	uint8_t rowstart;
+	uint8_t rowend;
 
 } Gray_Pkg;
 
@@ -63,11 +63,13 @@ int main() {
 	Mat gray_frame(num_rows, num_cols, CV_8UC1);
 	Mat edge_frame(num_rows, num_cols, CV_8UC1);
 
+	uint32_t row_chunk = num_rows >> 2; // divide by 4
+
 	// information for threads
-	Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, 4};
-	Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, 1, 4};
-	Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2, 4};
-	Gray_Pkg gpkg4 = {&raw_frame, &gray_frame, 3, 4};
+	Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, row_chunk};
+	Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, row_chunk, 2*row_chunk};
+	Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2*row_chunk, 3*row_chunk};
+	Gray_Pkg gpkg4 = {&raw_frame, &gray_frame, 3*row_chunk, 4*row_chunk};
 
 	Edge_Pkg epkg1 = {&gray_frame, &edge_frame, 0, 4};
 	Edge_Pkg epkg2 = {&gray_frame, &edge_frame, 1, 4};
@@ -128,15 +130,35 @@ void *grayscale(void *pkg){
 
 	Mat *raw_frame = info->raw_frame;
 	Mat *gray_frame = info->gray_frame;
-
 	uint32_t num_pix = raw_frame->rows * raw_frame->cols;
-	
+
+	uint8x16x3_t rgb_vec;
+	uint8_t *in_vec_start = raw_frame->data;
+
+	uint8_t *vr;
+	uint8_t *vg;
+	uint8_t *vb;
+
+	for (i = 0; i < 14400; i++) {
+		rgb_vec = vld3q_u8(in_vec_start);
+
+		vstlq_u8(vr, rgb_vec.val[0]);
+		vstlq_u8(vg, rgb_vec.val[1]);
+		vstlq_u8(vb, rgb_vec.val[2]);
+
+		
+
+		/// working here
+
+		in_vec_start += 48; // 3 * 16
+	}
+
 	for (int i = info->start; i < num_pix-1; i += info->span) {
 		int row = i / raw_frame->cols;
 		int col = i % raw_frame->cols;
 	
 		Pixel* ptr = raw_frame->ptr<Pixel>(row, col);
-		uint8_t num = 0.299*ptr->x + 0.587*ptr->y + 0.114*ptr->z;
+		uint8_t num = (4*ptr->x + 10*ptr->y + 2*ptr->z) >> 4;
 		uint8_t* opt = gray_frame->ptr<uint8_t>(row, col);
 		*opt = num;
 	}
