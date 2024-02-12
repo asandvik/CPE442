@@ -18,8 +18,8 @@ typedef Point_<int32_t> ImPoint;
 typedef struct Gray_Pkg {
 	Mat *raw_frame; // input
 	Mat *gray_frame; // output
-	uint8_t start;
-	uint8_t span;
+	uint32_t start; // starting memory index
+	uint32_t end; // ending memory index
 
 } Gray_Pkg;
 
@@ -27,8 +27,8 @@ typedef struct Gray_Pkg {
 typedef struct Edge_Pkg {
 	Mat *gray_frame; // input
 	Mat *edge_frame; // output
-	uint8_t start; // starting index
-	uint8_t span; // increment to indices
+	uint32_t start; // starting memory index
+	uint32_t end; // ending memory index
 } Edge_Pkg;
 
 /* vertical edge Sobel filter */
@@ -63,18 +63,18 @@ int main() {
 	Mat gray_frame(num_rows, num_cols, CV_8UC1);
 	Mat edge_frame(num_rows, num_cols, CV_8UC1);
 
-	// uint32_t row_chunk = num_rows >> 2; // divide by 4
+	uint32_t chunk = (uint32_t)(num_rows * num_cols) >> 2; // divide by 4
 
 	// information for threads
-	Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, 4};
-	Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, 1, 4};
-	Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2, 4};
-	Gray_Pkg gpkg4 = {&raw_frame, &gray_frame, 3, 4};
+	Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, chunk};
+	Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, chunk, 2*chunk};
+	Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2*chunk, 3*chunk};
+	Gray_Pkg gpkg4 = {&raw_frame, &gray_frame, 3*chunk, 4*chunk};
 
-	Edge_Pkg epkg1 = {&gray_frame, &edge_frame, 0, 4};
-	Edge_Pkg epkg2 = {&gray_frame, &edge_frame, 1, 4};
-	Edge_Pkg epkg3 = {&gray_frame, &edge_frame, 2, 4};
-	Edge_Pkg epkg4 = {&gray_frame, &edge_frame, 3, 4};
+	Edge_Pkg epkg1 = {&gray_frame, &edge_frame, 0, chunk};
+	Edge_Pkg epkg2 = {&gray_frame, &edge_frame, chunk, 2*chunk};
+	Edge_Pkg epkg3 = {&gray_frame, &edge_frame, 2*chunk, 3*chunk};
+	Edge_Pkg epkg4 = {&gray_frame, &edge_frame, 3*chunk, 4*chunk};
 
 	for(;;) {
 
@@ -135,7 +135,7 @@ void *grayscale(void *pkg){
 	uint8_t *input_start = raw_frame->data;
 	uint8_t *output_start = gray_frame->data;
 
-	for (int i = info->start * 8; i < num_pix-1; i += info->span * 8) {
+	for (int i = info->start; i < info->end; i += 8) {
 		// load with deinterleave
 		uint8x8x3_t rgb_vec = vld3_u8(input_start+i*3);
 
@@ -188,12 +188,9 @@ void *sobel(void *pkg){
 
 	uint32_t num_pix = gray_frame->rows * gray_frame->cols;
 	
-
-
-	for (int i = info->start; i < num_pix-1; i += info->span) {
+	for (int i = info->start; i < info->end; i += 1) {
 		int row = i / gray_frame->cols;
 		int col = i % gray_frame->cols;
-
 
 		uint8x8_t oner = vld1_u8(gray_frame->ptr<uint8_t>(row-1, col-1));
 		uint8x8_t twor = vld1_u8(gray_frame->ptr<uint8_t>(row, col-1));
