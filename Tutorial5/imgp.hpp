@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <papi.h>
 
-#define NUM_NATIVE_EVENTS 163
+#define NUM_NATIVE_EVENTS 24
 
 // void *grayscale(cv::Mat* input, cv::Mat* output);
 // void *sobel(cv::Mat* input, cv::Mat* output);

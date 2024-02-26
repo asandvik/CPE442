@@ -66,34 +66,42 @@ int main() {
 	memset(thvalues, 0, NUM_NATIVE_EVENTS);
 	memset(thvalues2, 0, NUM_NATIVE_EVENTS);
 
-	int papi_ret, papi_ret2;
-	//int EventSet2 = PAPI_NULL;
-	int native = 0x0;
+	int papi_ret;
+	int native;
 	PAPI_event_info_t info;
 	std::vector<std::string> names{};
 
+	//init PAPI
 	papi_ret = PAPI_library_init(PAPI_VER_CURRENT);
 	if(papi_ret != PAPI_VER_CURRENT){
 		printf("PAPI Init Err!!\n");
 		exit(1);
 	}
 
+	//create event set
 	papi_ret = PAPI_create_eventset(&EventSet);
 	if(papi_ret != PAPI_OK) handle_papi_error(papi_ret);
-	//int counter = 0;
+
+	//get first native event
 	native = PAPI_NATIVE_MASK | 0;
 	papi_ret = PAPI_enum_event(&native, PAPI_ENUM_FIRST);
+
+	//while the queried event exists
 	while(papi_ret == PAPI_OK){
+
+		//attempt to gather info, if info exists add the event to the set
 		if(PAPI_get_event_info(native, &info) == PAPI_OK){
-			PAPI_add_event(EventSet, native);
-			names.push_back(std::string{info.symbol});
+			if(PAPI_add_event(EventSet, native) == PAPI_OK){ 
+				names.push_back(std::string{info.symbol});
+			}
 		}
+
+		//query next native event
 		papi_ret = PAPI_enum_event(&native, PAPI_ENUM_EVENTS);
 	}
-	int z = 0;
-
+	
+	//begin counting
 	PAPI_start(EventSet);
-	//figure out how PAPI read works
 
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
