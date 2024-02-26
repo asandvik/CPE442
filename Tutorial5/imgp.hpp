@@ -18,6 +18,9 @@
 #include <iostream>
 #include <list>
 #include <pthread.h>
+#include <papi.h>
+
+#define NUM_NATIVE_EVENTS 163
 
 // void *grayscale(cv::Mat* input, cv::Mat* output);
 // void *sobel(cv::Mat* input, cv::Mat* output);
