@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -g -Werror -std=c++11 -O0 -lpthread
-LDFLAGS = -pthread `pkg-config --cflags --libs opencv4` 
+LDFLAGS = -pthread `pkg-config --cflags --libs opencv4 papi` 
 SRC = imgp.cpp imgp.hpp
 OUT = imgp
 
