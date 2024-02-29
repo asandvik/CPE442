@@ -12,7 +12,7 @@
 
 ### <ins>Things to Improve</ins>  (*stretch goals*)
 1. ~~Barriers~~
-2. Read next frame while processing
+2. ~~Read next frame while processing~~
 3. More counters from PAPI
 4. ~~Stop using ptr in sobel~~
 5. *Vulkan/OpenGL*
