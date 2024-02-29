@@ -161,7 +161,7 @@ int main() {
 	iret2 = pthread_create(&thread2, NULL, thread_proc, &pkg2);
 	iret3 = pthread_create(&thread3, NULL, thread_proc, &pkg3);
 	iret4 = pthread_create(&thread4, NULL, thread_proc, &pkg4);
-
+	
 	while (run) {
 
 		// wait for grayscale to complete
