@@ -16,3 +16,4 @@
 3. More counters from PAPI
 4. ~~Stop using ptr in sobel~~
 5. *Vulkan/OpenGL*
+6. Combine grayscale and sobel into one step
