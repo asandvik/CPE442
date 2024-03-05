@@ -118,7 +118,7 @@ int main() {
 	int iret1, iret2, iret3, iret4;
 
 	// create display window
-	namedWindow("CPU", WINDOW_NORMAL | WINDOW_AUTOSIZE);
+	namedWindow("CPU", WINDOW_AUTOSIZE);
 	// setWindowProperty("CPU", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
 
 	// video frame reader
@@ -133,22 +133,10 @@ int main() {
 
 	uint32_t chunk = (uint32_t)(num_rows * num_cols) >> 2; // divide by 4
 
-
 	Pkg pkg1 = {&raw_frame, &gray_frame, &edge_frame, 0, chunk};
 	Pkg pkg2 = {&raw_frame, &gray_frame, &edge_frame, chunk, 2*chunk};
 	Pkg pkg3 = {&raw_frame, &gray_frame, &edge_frame, 2*chunk, 3*chunk};
 	Pkg pkg4 = {&raw_frame, &gray_frame, &edge_frame, 3*chunk, 4*chunk};
-
-	// information for threads
-	// Gray_Pkg gpkg1 = {&raw_frame, &gray_frame, 0, chunk};
-	// Gray_Pkg gpkg2 = {&raw_frame, &gray_frame, chunk, 2*chunk};
-	// Gray_Pkg gpkg3 = {&raw_frame, &gray_frame, 2*chunk, 3*chunk};
-	// Gray_Pkg gpkg4 = {&raw_frame, &gray_frame, 3*chunk, 4*chunk};
-
-	// Edge_Pkg epkg1 = {&gray_frame, &edge_frame, 0, chunk};
-	// Edge_Pkg epkg2 = {&gray_frame, &edge_frame, chunk, 2*chunk};
-	// Edge_Pkg epkg3 = {&gray_frame, &edge_frame, 2*chunk, 3*chunk};
-	// Edge_Pkg epkg4 = {&gray_frame, &edge_frame, 3*chunk, 4*chunk};
 
 	pthread_barrier_init(&gray_barrier,NULL,5);
 	pthread_barrier_init(&sobel_barrier,NULL,5);
@@ -161,7 +149,7 @@ int main() {
 	iret2 = pthread_create(&thread2, NULL, thread_proc, &pkg2);
 	iret3 = pthread_create(&thread3, NULL, thread_proc, &pkg3);
 	iret4 = pthread_create(&thread4, NULL, thread_proc, &pkg4);
-	
+
 	while (run) {
 
 		// wait for grayscale to complete
@@ -177,38 +165,7 @@ int main() {
 		imshow("CPU", edge_frame);
 		waitKey(1);
 
-		// if (endflag) break; // kinda sloppy
-
-		// // launch grayscale threads
-		// iret1 = pthread_create(&thread1, NULL, grayscale, &gpkg1);
-		// iret2 = pthread_create(&thread2, NULL, grayscale, &gpkg2);
-		// iret3 = pthread_create(&thread3, NULL, grayscale, &gpkg3);
-		// iret4 = pthread_create(&thread4, NULL, grayscale, &gpkg4);
-		// PAPI_accum(EventSet, (long_long*)thvalues);
-		// // synchronize
-		// pthread_join(thread1, NULL);
-     	// pthread_join(thread2, NULL);
-		// pthread_join(thread3, NULL);
-     	// pthread_join(thread4, NULL); 
-		// PAPI_accum(EventSet, (long_long*)gvalues);
-		// // launch sobel threads
-		// iret1 = pthread_create(&thread1, NULL, sobel, &epkg1);
-		// iret2 = pthread_create(&thread2, NULL, sobel, &epkg2);
-		// iret3 = pthread_create(&thread3, NULL, sobel, &epkg3);
-		// iret4 = pthread_create(&thread4, NULL, sobel, &epkg4);
-		// PAPI_accum(EventSet, (long_long*)thvalues2);
-		// // synchronize
-		// pthread_join(thread1, NULL);
-     	// pthread_join(thread2, NULL);
-		// pthread_join(thread3, NULL);
-     	// pthread_join(thread4, NULL); 
-		// PAPI_accum(EventSet, (long_long*)svalues);
-
-		// display
-		// imshow("CPU", edge_frame);
-		// waitKey(1);
 	}
-
 
 	std::cout.width(50); std::cout << std::left << "Name";
 	std::cout.width(16); std::cout << std::left << "Grayscale Ratio";
@@ -265,14 +222,14 @@ void *thread_proc(void *pkg) {
 *
 * return: NULL
 *--------------------------------------------------------*/
-void *grayscale(Mat *in, Mat *out, intptr_t pstart, intptr_t pend){
+void *grayscale(Mat *in, Mat *out, intptr_t istart, intptr_t iend){
 
 	uint32_t num_pix = in->rows * in->cols;
 
 	uint8_t *input_start = in->data;
 	uint8_t *output_start = out->data;
 
-	for (int i = pstart; i < pend; i += 8) {
+	for (int i = istart; i < iend; i += 8) {
 		// load with deinterleave
 		uint8x8x3_t rgb_vec = vld3_u8(input_start+i*3);
 
@@ -315,23 +272,31 @@ void *grayscale(Mat *in, Mat *out, intptr_t pstart, intptr_t pend){
 *
 * return: NULL
 *--------------------------------------------------------*/
-void *sobel(Mat *in, Mat *out, intptr_t pstart, intptr_t pend){
+void *sobel(Mat *in, Mat *out, intptr_t istart, intptr_t iend){
 
-	uint32_t num_pix = in->rows * in->cols;
+	uint16_t cols = in->cols;
+	uint16_t rows = in->rows;
+	uint32_t num_pix = rows * cols;
 	
-	for (int i = pstart; i < pend; i += 1) {
-		int row = i / in->cols;
-		int col = i % in->cols;
+	uint8_t *data_in = in->data;
+	uint8_t *data_out = out->data;
 
-		uint8x8_t oner = vld1_u8(in->ptr<uint8_t>(row-1, col-1));
-		uint8x8_t twor = vld1_u8(in->ptr<uint8_t>(row, col-1));
-		uint8x8_t threer = vld1_u8(in->ptr<uint8_t>(row+1, col-1));
+	if (istart == 0) istart = cols; // start at second row if first block
+	if (iend == num_pix) iend = num_pix - cols; // stop before last row if last block
+	
+	for (int i = istart; i < iend; i += 1) {
+
 		int16x8_t neighborhood = {
-		
-			(int16_t)oner[0],	(int16_t)oner[1],	(int16_t)oner[2],
-			(int16_t)twor[0],		(int16_t)twor[2],
-			(int16_t)threer[0],  (int16_t)threer[1],	(int16_t)threer[2]
+			(int16_t)data_in[i-cols-1],	
+			(int16_t)data_in[i-cols],	
+			(int16_t)data_in[i-cols+1],
 
+			(int16_t)data_in[i-1],	
+			(int16_t)data_in[i+1],
+
+			(int16_t)data_in[i+cols-1],	
+			(int16_t)data_in[i+cols],	
+			(int16_t)data_in[i+cols+1],
 		};
 
 		int16x8_t gxv = vmulq_s16(neighborhood, Gx);
@@ -343,9 +308,7 @@ void *sobel(Mat *in, Mat *out, intptr_t pstart, intptr_t pend){
 		int16_t gf =  abs(gx) + abs(gy);
 		if(gf > 255) gf = 255;
 
-		uint8_t* newpix = out->ptr<uint8_t>(row, col);
-		*newpix = (uint8_t)gf;
-		
+		data_out[i] = (uint8_t)gf;
 	}
 	return NULL;
 }
