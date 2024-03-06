@@ -25,6 +25,7 @@
 // void *grayscale(cv::Mat* input, cv::Mat* output);
 // void *sobel(cv::Mat* input, cv::Mat* output);
 void *thread_proc(void* pkg);
+void *thread_proc2(void *pkg);
 void *grayscale(cv::Mat* in, cv::Mat *out, intptr_t start, intptr_t end);
 void *sobel(cv::Mat* in, cv::Mat *out, intptr_t start, intptr_t end);
 // void *grayscale(void* pkg);
