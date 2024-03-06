@@ -25,23 +25,6 @@ typedef struct Pkg {
 	uint32_t end; // ending memory index
 } Pkg;
 
-// /* information package for grayscale() */
-// typedef struct Gray_Pkg {
-// 	Mat *raw_frame; // input
-// 	Mat *gray_frame; // output
-// 	uint32_t start; // starting memory index
-// 	uint32_t end; // ending memory index
-
-// } Gray_Pkg;
-
-// /* information package for sobel() */
-// typedef struct Edge_Pkg {
-// 	Mat *gray_frame; // input
-// 	Mat *edge_frame; // output
-// 	uint32_t start; // starting memory index
-// 	uint32_t end; // ending memory index
-// } Edge_Pkg;
-
 /* vertical edge Sobel filter */
 const int16x8_t Gx = {
 	-1,  0,  1,
@@ -194,6 +177,89 @@ int main() {
 		std::cout.width(20); std::cout << std::left << tot << std::endl;
 
 	}
+}
+
+void *thread_proc2(void *pkg) {
+	Pkg *info = (Pkg *)pkg;
+
+	uint16_t cols = info->raw_frame->cols;
+	uint16_t rows = info->raw_frame->rows;
+	uint32_t num_pix = rows * cols;
+	
+	uint8_t *data_raw = info->raw_frame->data;
+	uint8_t *data_gray = info->gray_frame->data;
+	uint8_t *data_edge = info->edge_frame->data;
+
+	uint32_t istart = info->start;
+	uint32_t iend = info->end;
+
+	if (istart == 0) istart = cols; // start at second row if first block
+	if (iend == num_pix) iend = num_pix - cols; // stop before last row if last block
+
+	while (run) {
+
+		// Grayscale
+		for (int i = istart; i < iend; i += 8) {
+			// load with deinterleave
+			uint8x8x3_t rgb_vec = vld3_u8(data_raw+i*3);
+
+			// widen into 16 bit fields
+			uint16x8_t vr = vmovl_u8(rgb_vec.val[0]);
+			uint16x8_t vg = vmovl_u8(rgb_vec.val[1]);
+			uint16x8_t vb = vmovl_u8(rgb_vec.val[2]);
+
+			// multiply
+			vr = vmulq_n_u16(vr, 4);
+			vg = vmulq_n_u16(vg, 10);
+			vb = vmulq_n_u16(vb, 2);
+
+			// add channels together
+			uint16x8_t vgray16 = vaddq_u16(vr, vg);
+			vgray16 = vaddq_u16(vgray16, vb);
+
+			// divide by 16
+			vgray16 = vshrq_n_u16(vgray16, 4);
+
+			// make 8 bit
+			uint8x8_t vgray8 = vmovn_u16(vgray16);
+
+			// write to output
+			vst1_u8(data_gray+i, vgray8);
+		}
+
+		pthread_barrier_wait(&gray_barrier);
+
+		// Sobel
+		for (int i = istart; i < iend; i += 1) {
+
+			int16x8_t neighborhood = {
+				(int16_t)data_gray[i-cols-1],	
+				(int16_t)data_gray[i-cols],	
+				(int16_t)data_gray[i-cols+1],
+
+				(int16_t)data_gray[i-1],	
+				(int16_t)data_gray[i+1],
+
+				(int16_t)data_gray[i+cols-1],	
+				(int16_t)data_gray[i+cols],	
+				(int16_t)data_gray[i+cols+1],
+			};
+
+			int16x8_t gxv = vmulq_s16(neighborhood, Gx);
+			int16x8_t gyv = vmulq_s16(neighborhood, Gy);
+
+			int16_t gx = vaddvq_s16(gxv);
+			int16_t gy = vaddvq_s16(gyv);
+			
+			int16_t gf =  abs(gx) + abs(gy);
+			if(gf > 255) gf = 255;
+
+			data_edge[i] = (uint8_t)gf;
+		}
+
+		pthread_barrier_wait(&sobel_barrier);
+	}
+	return NULL;
 }
 
 void *thread_proc(void *pkg) {
