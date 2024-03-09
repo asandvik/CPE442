@@ -48,12 +48,13 @@ void handle_papi_error(int retval){
 
 int run = 1;
 
+unsigned long_long tvalues[NUM_NATIVE_EVENTS];
+unsigned long_long gvalues[NUM_NATIVE_EVENTS];
+unsigned long_long svalues[NUM_NATIVE_EVENTS];
+unsigned long_long thvalues[NUM_NATIVE_EVENTS];
+unsigned long_long thvalues2[NUM_NATIVE_EVENTS];
+
 int main() {
-	unsigned long_long tvalues[NUM_NATIVE_EVENTS];
-	unsigned long_long gvalues[NUM_NATIVE_EVENTS];
-	unsigned long_long svalues[NUM_NATIVE_EVENTS];
-	unsigned long_long thvalues[NUM_NATIVE_EVENTS];
-	unsigned long_long thvalues2[NUM_NATIVE_EVENTS];
 	memset(tvalues, 0, NUM_NATIVE_EVENTS);
 	memset(gvalues, 0, NUM_NATIVE_EVENTS);
 	memset(svalues, 0, NUM_NATIVE_EVENTS);
@@ -95,7 +96,7 @@ int main() {
 	}
 	
 	//begin counting
-	PAPI_start(EventSet);
+	//PAPI_start(EventSet);
 
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
@@ -153,27 +154,22 @@ int main() {
 	std::cout.width(50); std::cout << std::left << "Name";
 	std::cout.width(16); std::cout << std::left << "Grayscale Ratio";
 	std::cout.width(12); std::cout << std::left << "Sobel Ratio";
-	std::cout.width(19); std::cout << std::left << "Threading Overhead";
 	std::cout.width(20); std::cout << std::left << "Total Counter Value" << std::endl;
 	for(int i=0;i<NUM_NATIVE_EVENTS;i++){
-		unsigned long_long tot = thvalues2[i] + thvalues[i] + gvalues[i] + svalues[i];
+		unsigned long_long tot = gvalues[i] + svalues[i];
 		std::cout.width(50); std::cout << std::left << names.at(i).c_str();
 		char grat[11];
 		char srat[11];
-		char trat[11];
 		if(tot){
 			sprintf(grat, "%f", (double)gvalues[i]/tot);
 			sprintf(srat, "%f", (double)svalues[i]/tot);
-			sprintf(trat, "%f", (double)(thvalues[i]+thvalues2[i])/tot);
 		}
 		else{
 			sprintf(grat, "NULL");
 			sprintf(srat, "NULL");
-			sprintf(trat, "NULL");
 		}
 		std::cout.width(16); std::cout << std::left << grat;
 		std::cout.width(12); std::cout << std::left << srat;
-		std::cout.width(19); std::cout << std::left << trat;
 		std::cout.width(20); std::cout << std::left << tot << std::endl;
 
 	}
@@ -264,12 +260,25 @@ void *thread_proc2(void *pkg) {
 
 void *thread_proc(void *pkg) {
 	Pkg *info = (Pkg *)pkg;
-
-	while (run) {
-		grayscale(info->raw_frame, info->gray_frame, info->start, info->end);
-		pthread_barrier_wait(&gray_barrier);
-		sobel(info->gray_frame, info->edge_frame, info->start, info->end);
-		pthread_barrier_wait(&sobel_barrier);
+	if(!info->start){ 
+		PAPI_start(EventSet);
+		while (run) {
+			grayscale(info->raw_frame, info->gray_frame, info->start, info->end);
+			PAPI_accum(EventSet, (long_long*)gvalues);
+			pthread_barrier_wait(&gray_barrier);
+			PAPI_reset(EventSet);
+			sobel(info->gray_frame, info->edge_frame, info->start, info->end);
+			PAPI_accum(EventSet, (long_long*)svalues);
+			pthread_barrier_wait(&sobel_barrier);
+		}
+	}
+	else{
+		while (run) {
+			grayscale(info->raw_frame, info->gray_frame, info->start, info->end);
+			pthread_barrier_wait(&gray_barrier);
+			sobel(info->gray_frame, info->edge_frame, info->start, info->end);
+			pthread_barrier_wait(&sobel_barrier);
+		}
 	}
 	return NULL;
 }
