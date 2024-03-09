@@ -55,53 +55,192 @@ void handle_papi_error(int retval){
 }
 
 int main() {
-	unsigned long_long tvalues[NUM_NATIVE_EVENTS];
-	unsigned long_long gvalues[NUM_NATIVE_EVENTS];
-	unsigned long_long svalues[NUM_NATIVE_EVENTS];
-	unsigned long_long thvalues[NUM_NATIVE_EVENTS];
-	unsigned long_long thvalues2[NUM_NATIVE_EVENTS];
-	memset(tvalues, 0, NUM_NATIVE_EVENTS);
-	memset(gvalues, 0, NUM_NATIVE_EVENTS);
-	memset(svalues, 0, NUM_NATIVE_EVENTS);
-	memset(thvalues, 0, NUM_NATIVE_EVENTS);
-	memset(thvalues2, 0, NUM_NATIVE_EVENTS);
+	// unsigned long_long tvalues[NUM_NATIVE_EVENTS];
+	// unsigned long_long gvalues[NUM_NATIVE_EVENTS];
+	// unsigned long_long svalues[NUM_NATIVE_EVENTS];
+	// unsigned long_long thvalues[NUM_NATIVE_EVENTS];
+	// unsigned long_long thvalues2[NUM_NATIVE_EVENTS];
+	// memset(tvalues, 0, NUM_NATIVE_EVENTS);
+	// memset(gvalues, 0, NUM_NATIVE_EVENTS);
+	// memset(svalues, 0, NUM_NATIVE_EVENTS);
+	// memset(thvalues, 0, NUM_NATIVE_EVENTS);
+	// memset(thvalues2, 0, NUM_NATIVE_EVENTS);
 
-	int papi_ret;
-	int native;
-	PAPI_event_info_t info;
-	std::vector<std::string> names{};
+	// int papi_ret;
+	// int native;
+	// PAPI_event_info_t info;
+	// std::vector<std::string> names{};
 
-	//init PAPI
-	papi_ret = PAPI_library_init(PAPI_VER_CURRENT);
-	if(papi_ret != PAPI_VER_CURRENT){
-		printf("PAPI Init Err!!\n");
-		exit(1);
-	}
+	// //init PAPI
+	// papi_ret = PAPI_library_init(PAPI_VER_CURRENT);
+	// if(papi_ret != PAPI_VER_CURRENT){
+	// 	printf("PAPI Init Err!!\n");
+	// 	exit(1);
+	// }
 
-	//create event set
-	papi_ret = PAPI_create_eventset(&EventSet);
-	if(papi_ret != PAPI_OK) handle_papi_error(papi_ret);
+	// //create event set
+	// papi_ret = PAPI_create_eventset(&EventSet);
+	// if(papi_ret != PAPI_OK) handle_papi_error(papi_ret);
 
-	//get first native event
-	native = PAPI_NATIVE_MASK | 0;
-	papi_ret = PAPI_enum_event(&native, PAPI_ENUM_FIRST);
+	// //get first native event
+	// native = PAPI_NATIVE_MASK | 0;
+	// papi_ret = PAPI_enum_event(&native, PAPI_ENUM_FIRST);
 
-	//while the queried event exists
-	while(papi_ret == PAPI_OK){
+	// int blist[] ={
+	// 				9,
+	// 				10,
+	// 				11,
+	// 				16,
+	// 				17,
+	// 				18,
+	// 				19,
+	// 				20,
+	// 				21,
+	// 				22,
+	// 				23,
+	// 				46,
+	// 				47,
+	// 				51,
+	// 				52,
+	// 				53,
+	// 				54,
+	// 				55,
+	// 				56,
+	// 				57,
+	// 				58,
+	// 				59,
+	// 				61,
+	// 				63,
+	// 				65,
+	// 				66,
+	// 				67,
+	// 				68,
+	// 				69,
+	// 				70,
+	// 				71,
+	// 				72,
+	// 				73,
+	// 				74,
+	// 				75,
+	// 				76,
+	// 				77,
+	// 				78,
+	// 				79,
+	// 				80,
+	// 				81,
+	// 				82,
+	// 				83,
+	// 				84,
+	// 				85,
+	// 				86,
+	// 				87,
+	// 				88,
+	// 				89,
+	// 				90,
+	// 				91,
+	// 				92,
+	// 				93,
+	// 				94,
+	// 				95,
+	// 				96,
+	// 				97,
+	// 				98,
+	// 				99,
+	// 				100,
+	// 				101,
+	// 				102,
+	// 				103,
+	// 				104,
+	// 				105,
+	// 				106,
+	// 				107,
+	// 				108,
+	// 				109,
+	// 				110,
+	// 				111,
+	// 				112,
+	// 				113,
+	// 				114,
+	// 				115,
+	// 				116,
+	// 				117,
+	// 				118,
+	// 				119,
+	// 				120,
+	// 				121,
+	// 				122,
+	// 				123,
+	// 				124,
+	// 				125,
+	// 				126,
+	// 				127,
+	// 				128,
+	// 				129,
+	// 				130,
+	// 				131,
+	// 				132,
+	// 				133,
+	// 				134,
+	// 				135,
+	// 				136,
+	// 				137,
+	// 				138,
+	// 				139,
+	// 				140,
+	// 				141,
+	// 				142,
+	// 				143,
+	// 				144,
+	// 				145,
+	// 				146,
+	// 				147,
+	// 				148,
+	// 				149,
+	// 				150,
+	// 				151,
+	// 				152,
+	// 				153,
+	// 				154,
+	// 				155,
+	// 				156,
+	// 				157,
+	// 				158,
+	// 				159,
+	// 				160,
+	// 				161,
+	// 				162};
 
-		//attempt to gather info, if info exists add the event to the set
-		if(PAPI_get_event_info(native, &info) == PAPI_OK){
-			if(PAPI_add_event(EventSet, native) == PAPI_OK){ 
-				names.push_back(std::string{info.symbol});
-			}
-		}
+	// //while the queried event exists
+	// int counter = 0;
+	// while(papi_ret == PAPI_OK){
 
-		//query next native event
-		papi_ret = PAPI_enum_event(&native, PAPI_ENUM_EVENTS);
-	}
+	// 	//attempt to gather info, if info exists add the event to the set
+	// 	if(std::find(std::begin(blist), std::end(blist), counter) != std::end(blist) && PAPI_get_event_info(native, &info) == PAPI_OK && std::string{info.symbol}.substr(0, 4).compare("perf") != 0){
+	// 		int rettt = PAPI_add_event(EventSet, native);
+	// 		if(rettt == PAPI_OK){ 
+	// 			names.push_back(std::string{info.symbol});
+	// 		}
+	// 		else std::cout << counter << "," << rettt << std::endl;
+	// 	}
+
+	// 	//query next native event
+	// 	papi_ret = PAPI_enum_event(&native, PAPI_ENUM_EVENTS);
+	// 	counter++;
+	// }
 	
-	//begin counting
-	PAPI_start(EventSet);
+	// // for (int i : evs){
+	// // 	std::cout << "running" << std::endl;
+	// // 	if(PAPI_get_event_info(i, &info) == PAPI_OK){
+	// // 		if(PAPI_add_event(EventSet, i) == PAPI_OK){ 
+	// // 			// std::cout << "running" << std::endl;
+	// // 			names.push_back(std::string{info.symbol});
+	// // 		}
+	// // 		else std::cout << native << "," << std::endl;
+	// // 	}
+	// // }
+	
+	// //begin counting
+	// PAPI_start(EventSet);
 
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
@@ -143,58 +282,58 @@ int main() {
 		iret2 = pthread_create(&thread2, NULL, grayscale, &gpkg2);
 		iret3 = pthread_create(&thread3, NULL, grayscale, &gpkg3);
 		iret4 = pthread_create(&thread4, NULL, grayscale, &gpkg4);
-		PAPI_accum(EventSet, (long_long*)thvalues);
+		//PAPI_accum(EventSet, (long_long*)thvalues);
 		// synchronize
 		pthread_join(thread1, NULL);
      	pthread_join(thread2, NULL);
 		pthread_join(thread3, NULL);
      	pthread_join(thread4, NULL); 
-		PAPI_accum(EventSet, (long_long*)gvalues);
+		//PAPI_accum(EventSet, (long_long*)gvalues);
 		// launch sobel threads
 		iret1 = pthread_create(&thread1, NULL, sobel, &epkg1);
 		iret2 = pthread_create(&thread2, NULL, sobel, &epkg2);
 		iret3 = pthread_create(&thread3, NULL, sobel, &epkg3);
 		iret4 = pthread_create(&thread4, NULL, sobel, &epkg4);
-		PAPI_accum(EventSet, (long_long*)thvalues2);
+		//PAPI_accum(EventSet, (long_long*)thvalues2);
 		// synchronize
 		pthread_join(thread1, NULL);
      	pthread_join(thread2, NULL);
 		pthread_join(thread3, NULL);
      	pthread_join(thread4, NULL); 
-		PAPI_accum(EventSet, (long_long*)svalues);
+		//PAPI_accum(EventSet, (long_long*)svalues);
 
 		// display
 		imshow("CPU", edge_frame);
 		waitKey(1);
 	}
 
-	std::cout.width(50); std::cout << std::left << "Name";
-	std::cout.width(16); std::cout << std::left << "Grayscale Ratio";
-	std::cout.width(12); std::cout << std::left << "Sobel Ratio";
-	std::cout.width(19); std::cout << std::left << "Threading Overhead";
-	std::cout.width(20); std::cout << std::left << "Total Counter Value" << std::endl;
-	for(int i=0;i<NUM_NATIVE_EVENTS;i++){
-		unsigned long_long tot = thvalues2[i] + thvalues[i] + gvalues[i] + svalues[i];
-		std::cout.width(50); std::cout << std::left << names.at(i).c_str();
-		char grat[11];
-		char srat[11];
-		char trat[11];
-		if(tot){
-			sprintf(grat, "%f", (double)gvalues[i]/tot);
-			sprintf(srat, "%f", (double)svalues[i]/tot);
-			sprintf(trat, "%f", (double)(thvalues[i]+thvalues2[i])/tot);
-		}
-		else{
-			sprintf(grat, "NULL");
-			sprintf(srat, "NULL");
-			sprintf(trat, "NULL");
-		}
-		std::cout.width(16); std::cout << std::left << grat;
-		std::cout.width(12); std::cout << std::left << srat;
-		std::cout.width(19); std::cout << std::left << trat;
-		std::cout.width(20); std::cout << std::left << tot << std::endl;
+	// std::cout.width(50); std::cout << std::left << "Name";
+	// std::cout.width(16); std::cout << std::left << "Grayscale Ratio";
+	// std::cout.width(12); std::cout << std::left << "Sobel Ratio";
+	// std::cout.width(19); std::cout << std::left << "Threading Overhead";
+	// std::cout.width(20); std::cout << std::left << "Total Counter Value" << std::endl;
+	// for(int i=0;i<names.size();i++){
+	// 	unsigned long_long tot = thvalues2[i] + thvalues[i] + gvalues[i] + svalues[i];
+	// 	std::cout.width(50); std::cout << std::left << names.at(i).c_str();
+	// 	char grat[11];
+	// 	char srat[11];
+	// 	char trat[11];
+	// 	if(tot){
+	// 		sprintf(grat, "%f", (double)gvalues[i]/tot);
+	// 		sprintf(srat, "%f", (double)svalues[i]/tot);
+	// 		sprintf(trat, "%f", (double)(thvalues[i]+thvalues2[i])/tot);
+	// 	}
+	// 	else{
+	// 		sprintf(grat, "NULL");
+	// 		sprintf(srat, "NULL");
+	// 		sprintf(trat, "NULL");
+	// 	}
+	// 	std::cout.width(16); std::cout << std::left << grat;
+	// 	std::cout.width(12); std::cout << std::left << srat;
+	// 	std::cout.width(19); std::cout << std::left << trat;
+	// 	std::cout.width(20); std::cout << std::left << tot << std::endl;
 
-	}
+	// }
 }
 
 /*-----------------------------------------------------
@@ -271,10 +410,13 @@ void *sobel(void *pkg){
 	Mat *edge_frame = info->edge_frame;
 
 	uint32_t num_pix = gray_frame->rows * gray_frame->cols;
-	
+	uint8_t* newpix = NULL;
+
 	for (int i = info->start; i < info->end; i += 1) {
 		int row = i / gray_frame->cols;
 		int col = i % gray_frame->cols;
+
+		if(newpix == NULL) newpix = edge_frame->ptr<uint8_t>(row, col);
 
 		uint8x8_t oner = vld1_u8(gray_frame->ptr<uint8_t>(row-1, col-1));
 		uint8x8_t twor = vld1_u8(gray_frame->ptr<uint8_t>(row, col-1));
@@ -296,8 +438,9 @@ void *sobel(void *pkg){
 		int16_t gf =  abs(gx) + abs(gy);
 		if(gf > 255) gf = 255;
 
-		uint8_t* newpix = edge_frame->ptr<uint8_t>(row, col);
+		//uint8_t* newpix = edge_frame->ptr<uint8_t>(row, col);
 		*newpix = (uint8_t)gf;
+		newpix++;
 		
 	}
 	return NULL;
