@@ -29,7 +29,7 @@ int main(){
         
 	namedWindow("CPU", WINDOW_NORMAL);
 	Mat frame;
-	VideoCapture reader("A.mp4");
+	VideoCapture reader("../Videos/A.mp4");
 	resizeWindow("CPU", 1600, 900);
 	
 	int num = 0;
