@@ -264,14 +264,14 @@ void *thread_proc2(void *pkg) {
 void *thread_proc(void *pkg) {
 	Pkg *info = (Pkg *)pkg;
 	if(!info->start){ 
-		PAPI_start(EventSet);
+		//PAPI_start(EventSet);
 		while (run) {
 			grayscale(info->raw_frame, info->gray_frame, info->start, info->end);
-			PAPI_accum(EventSet, (long_long*)gvalues);
+			//PAPI_accum(EventSet, (long_long*)gvalues);
 			pthread_barrier_wait(&gray_barrier);
-			PAPI_reset(EventSet);
+			//PAPI_reset(EventSet);
 			sobel(info->gray_frame, info->edge_frame, info->start, info->end);
-			PAPI_accum(EventSet, (long_long*)svalues);
+			//PAPI_accum(EventSet, (long_long*)svalues);
 			pthread_barrier_wait(&sobel_barrier);
 		}
 	}
