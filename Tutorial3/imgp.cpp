@@ -52,10 +52,10 @@ int main() {
 
 	// create display window
 	namedWindow("CPU", WINDOW_AUTOSIZE);
-	setWindowProperty("CPU", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
+	// setWindowProperty("CPU", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
 
 	// video frame reader
-	VideoCapture reader("A.mp4");
+	VideoCapture reader("../Videos/A.mp4");
 	double num_cols = reader.get(CAP_PROP_FRAME_WIDTH);
 	double num_rows = reader.get(CAP_PROP_FRAME_HEIGHT);
 
