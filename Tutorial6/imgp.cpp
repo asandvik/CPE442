@@ -45,6 +45,7 @@ void handle_papi_error(int retval){
 	printf("PAPI error %d: %s\n", retval, PAPI_strerror(retval));
 	exit(1);
 }
+void run_filt();
 
 int run = 1;
 
@@ -54,6 +55,9 @@ unsigned long_long svalues[NUM_NATIVE_EVENTS];
 unsigned long_long thvalues[NUM_NATIVE_EVENTS];
 unsigned long_long thvalues2[NUM_NATIVE_EVENTS];
 
+std::vector<unsigned long_long> ggvalues;
+std::vector<unsigned long_long> ssvalues;
+
 int main() {
 	memset(tvalues, 0, NUM_NATIVE_EVENTS);
 	memset(gvalues, 0, NUM_NATIVE_EVENTS);
@@ -62,7 +66,7 @@ int main() {
 	memset(thvalues2, 0, NUM_NATIVE_EVENTS);
 
 	int papi_ret;
-	int native;
+	int native = -1;
 	PAPI_event_info_t info;
 	std::vector<std::string> names{};
 
@@ -72,32 +76,77 @@ int main() {
 		printf("PAPI Init Err!!\n");
 		exit(1);
 	}
+	int counter = 0;
+	int lnamesz = 0;
+	while(counter < NUM_NATIVE_EVENTS){
+		//create event
+		papi_ret = PAPI_create_eventset(&EventSet);
+		if(papi_ret != PAPI_OK) handle_papi_error(papi_ret);
 
-	//create event set
-	papi_ret = PAPI_create_eventset(&EventSet);
-	if(papi_ret != PAPI_OK) handle_papi_error(papi_ret);
-
-	//get first native event
-	native = PAPI_NATIVE_MASK | 0;
-	papi_ret = PAPI_enum_event(&native, PAPI_ENUM_FIRST);
-
-	//while the queried event exists
-	while(papi_ret == PAPI_OK){
-
-		//attempt to gather info, if info exists add the event to the set
-		if(PAPI_get_event_info(native, &info) == PAPI_OK){
-			if(PAPI_add_event(EventSet, native) == PAPI_OK){ 
-				names.push_back(std::string{info.symbol});
-			}
+		//get first native event
+		if(native == -1){
+			native = PAPI_NATIVE_MASK | 0;
+			papi_ret = PAPI_enum_event(&native, PAPI_ENUM_FIRST);
 		}
+		else papi_ret = PAPI_enum_event(&native, PAPI_ENUM_EVENTS);
+		//while the queried event exists
+		while(papi_ret == PAPI_OK){
+			
+			//attempt to gather info, if info exists add the event to the set
+			if(PAPI_get_event_info(native, &info) == PAPI_OK){
+				int aeret = PAPI_add_event(EventSet, native);
+				if(aeret == PAPI_OK){ 
+					names.push_back(std::string{info.symbol});
+				}
+				else if(aeret == PAPI_ECNFLCT) break;
+			}
+			counter++;
+			//query next native event
+			papi_ret = PAPI_enum_event(&native, PAPI_ENUM_EVENTS);
+		}
+		
+		//begin counting
+		//PAPI_start(EventSet);
+		std::cout << "Counter" << counter << std::endl;
+		run_filt();
 
-		//query next native event
-		papi_ret = PAPI_enum_event(&native, PAPI_ENUM_EVENTS);
+		for(int i=0;i<names.size()-lnamesz;i++){
+			ssvalues.push_back(svalues[i]);
+			ggvalues.push_back(gvalues[i]);
+		}
+		lnamesz = names.size();
+
+		//PAPI_destroy_eventset(&EventSet);
+		EventSet = PAPI_NULL;
+
 	}
-	
-	//begin counting
-	//PAPI_start(EventSet);
 
+
+	std::cout.width(50); std::cout << std::left << "Name";
+	std::cout.width(16); std::cout << std::left << "Grayscale Ratio";
+	std::cout.width(12); std::cout << std::left << "Sobel Ratio";
+	std::cout.width(20); std::cout << std::left << "Total Counter Value" << std::endl;
+	for(int i=0;i<names.size();i++){
+		unsigned long_long tot = ggvalues[i] + ssvalues[i];
+		std::cout.width(50); std::cout << std::left << names.at(i).c_str();
+		char grat[11];
+		char srat[11];
+		if(tot){
+			sprintf(grat, "%f", (double)ggvalues[i]/tot);
+			sprintf(srat, "%f", (double)ssvalues[i]/tot);
+		}
+		else{
+			sprintf(grat, "NULL");
+			sprintf(srat, "NULL");
+		}
+		std::cout.width(16); std::cout << std::left << grat;
+		std::cout.width(12); std::cout << std::left << srat;
+		std::cout.width(20); std::cout << std::left << tot << std::endl;
+
+	}
+}
+
+void run_filt(){
 	pthread_t thread1, thread2, thread3, thread4;
 	int iret1, iret2, iret3, iret4;
 
@@ -150,29 +199,11 @@ int main() {
 		waitKey(1);
 
 	}
-
-	std::cout.width(50); std::cout << std::left << "Name";
-	std::cout.width(16); std::cout << std::left << "Grayscale Ratio";
-	std::cout.width(12); std::cout << std::left << "Sobel Ratio";
-	std::cout.width(20); std::cout << std::left << "Total Counter Value" << std::endl;
-	for(int i=0;i<NUM_NATIVE_EVENTS;i++){
-		unsigned long_long tot = gvalues[i] + svalues[i];
-		std::cout.width(50); std::cout << std::left << names.at(i).c_str();
-		char grat[11];
-		char srat[11];
-		if(tot){
-			sprintf(grat, "%f", (double)gvalues[i]/tot);
-			sprintf(srat, "%f", (double)svalues[i]/tot);
-		}
-		else{
-			sprintf(grat, "NULL");
-			sprintf(srat, "NULL");
-		}
-		std::cout.width(16); std::cout << std::left << grat;
-		std::cout.width(12); std::cout << std::left << srat;
-		std::cout.width(20); std::cout << std::left << tot << std::endl;
-
-	}
+	pthread_join(thread1, NULL);
+	pthread_join(thread2, NULL);
+	pthread_join(thread3, NULL);
+	pthread_join(thread4, NULL);
+	destroyAllWindows();
 }
 
 void *thread_proc2(void *pkg) {
